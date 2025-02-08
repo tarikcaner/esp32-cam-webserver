@@ -8,6 +8,7 @@
 #include "src/parsebytes.h"
 #include "time.h"
 #include <ESPmDNS.h>
+#include "myconfig.h"  // Make sure this is included
 
 
 /* This sketch is a extension/expansion/reork of the 'official' ESP32 Camera example
@@ -36,16 +37,9 @@
  *
  */
 
-// Primary config, or defaults.
-#if __has_include("myconfig.h")
-    struct station { const char ssid[65]; const char password[65]; const bool dhcp;};  // do no edit
-    #include "myconfig.h"
-#else
+// Check if myconfig.h exists
+#if !__has_include("myconfig.h")
     #warning "Using Defaults: Copy myconfig.sample.h to myconfig.h and edit that to use your own settings"
-    #define WIFI_AP_ENABLE
-    #define CAMERA_MODEL_AI_THINKER
-    struct station { const char ssid[65]; const char password[65]; const bool dhcp;}
-    stationList[] = {{"ESP32-CAM-CONNECT","InsecurePassword", true}};
 #endif
 
 // Upstream version string
@@ -629,7 +623,13 @@ void WifiSetup() {
 }
 
 void setup() {
+    Serial.end();  // First end any existing serial
+    delay(100);
     Serial.begin(115200);
+    while (!Serial) {
+        ; // Wait for serial port to connect
+    }
+    delay(1000);
     Serial.setDebugOutput(true);
     Serial.println();
     Serial.println("====");
