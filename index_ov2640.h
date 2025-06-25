@@ -283,10 +283,52 @@ const uint8_t index_ov2640_html[] = R"=====(<!doctype html>
         </div>
         <figure>
           <div id="stream-container" class="image-container hidden">
-            <div class="close close-rot-none" id="close-stream">×</div>
+            <div id="stream-control" class="hidden">
+              <i id="close-stream">×</i>
+            </div>
             <img id="stream" src="">
           </div>
         </figure>
+
+        <div id="rc-controls" style="text-align: center; margin-top: 15px;">
+          <style>
+            .rc-button {
+              font-size: 24px;
+              padding: 10px 15px;
+              margin: 5px;
+              cursor: pointer;
+              border: 1px solid #ccc;
+              border-radius: 5px;
+              user-select: none;
+              width: 60px;
+              height: 50px;
+              line-height: 25px;
+            }
+            .rc-button:active {
+              background-color: #ddd;
+            }
+            #rc-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 65px);
+              grid-template-rows: repeat(2, 55px);
+              gap: 5px;
+              justify-content: center;
+              align-items: center;
+            }
+            #btn-fwd { grid-column: 2; grid-row: 1; }
+            #btn-left { grid-column: 1; grid-row: 2; }
+            #btn-stop { grid-column: 2; grid-row: 2; background-color: #f8d7da; }
+            #btn-right { grid-column: 3; grid-row: 2; }
+            #btn-rev { grid-column: 2; grid-row: 3; }
+          </style>
+          <div id="rc-grid">
+            <button id="btn-fwd" class="rc-button">↑</button>
+            <button id="btn-left" class="rc-button">←</button>
+            <button id="btn-stop" class="rc-button">🛑</button>
+            <button id="btn-right" class="rc-button">→</button>
+            <button id="btn-rev" class="rc-button">↓</button>
+          </div>
+        </div>
       </div>
     </section>
   </body>
@@ -625,6 +667,45 @@ const uint8_t index_ov2640_html[] = R"=====(<!doctype html>
         }, 30000);
       }
     }
+
+    // RC Control Functions
+    function sendCommand(direction) {
+      fetch(`${baseHost}/rc_control?dir=${direction}`)
+        .then(response => {
+          if (!response.ok) {
+            console.error('RC control failed');
+          }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    document.getElementById('btn-fwd').addEventListener('mousedown', () => sendCommand('forward'));
+    document.getElementById('btn-rev').addEventListener('mousedown', () => sendCommand('backward'));
+    document.getElementById('btn-left').addEventListener('mousedown', () => sendCommand('left'));
+    document.getElementById('btn-right').addEventListener('mousedown', () => sendCommand('right'));
+    document.getElementById('btn-stop').addEventListener('click', () => sendCommand('stop'));
+
+    // Touch events for mobile devices
+    document.getElementById('btn-fwd').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sendCommand('forward');
+    });
+    document.getElementById('btn-rev').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sendCommand('backward');
+    });
+    document.getElementById('btn-left').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sendCommand('left');
+    });
+    document.getElementById('btn-right').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sendCommand('right');
+    });
+    document.getElementById('btn-stop').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      sendCommand('stop');
+    });
 
   })
   </script>

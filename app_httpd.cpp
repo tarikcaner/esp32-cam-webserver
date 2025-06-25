@@ -20,6 +20,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
+#include "myconfig.h"  // RC pin tanımlamaları için
 #include "index_ov2640.h"
 #include "index_ov3660.h"
 #include "index_other.h"
@@ -743,7 +744,55 @@ static esp_err_t index_handler(httpd_req_t *req){
     }
 }
 
+// RC Car Control Endpoints
+static esp_err_t rc_control_handler(httpd_req_t *req) {
+    char*  buf;
+    size_t buf_len;
+    char direction[32] = {0,};
+
+    buf_len = httpd_req_get_url_query_len(req) + 1;
+    if (buf_len > 1) {
+        buf = (char*)malloc(buf_len);
+        if(!buf){
+            httpd_resp_send_500(req);
+            return ESP_FAIL;
+        }
+        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+            if (httpd_query_key_value(buf, "dir", direction, sizeof(direction)) == ESP_OK) {
+                if(strcmp(direction, "forward") == 0) {
+                    digitalWrite(RC_PIN_FORWARD, HIGH);  // Sürekli HIGH sinyal
+                } else if(strcmp(direction, "backward") == 0) {
+                    digitalWrite(RC_PIN_BACKWARD, HIGH); // Sürekli HIGH sinyal
+                } else if(strcmp(direction, "left") == 0) {
+                    digitalWrite(RC_PIN_LEFT, HIGH);     // Sürekli HIGH sinyal
+                } else if(strcmp(direction, "right") == 0) {
+                    digitalWrite(RC_PIN_RIGHT, HIGH);    // Sürekli HIGH sinyal
+                } else if(strcmp(direction, "stop") == 0) {
+                    digitalWrite(RC_PIN_FORWARD, LOW);   // Tüm sinyalleri LOW yap
+                    digitalWrite(RC_PIN_BACKWARD, LOW);
+                    digitalWrite(RC_PIN_LEFT, LOW);
+                    digitalWrite(RC_PIN_RIGHT, LOW);
+                }
+            }
+        }
+        free(buf);
+    }
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    return httpd_resp_send(req, NULL, 0);
+}
+
 void startCameraServer(int hPort, int sPort){
+    // Setup RC control pins
+    pinMode(RC_PIN_FORWARD, OUTPUT);
+    pinMode(RC_PIN_BACKWARD, OUTPUT);
+    pinMode(RC_PIN_LEFT, OUTPUT);
+    pinMode(RC_PIN_RIGHT, OUTPUT);
+    
+    digitalWrite(RC_PIN_FORWARD, LOW);
+    digitalWrite(RC_PIN_BACKWARD, LOW);
+    digitalWrite(RC_PIN_LEFT, LOW);
+    digitalWrite(RC_PIN_RIGHT, LOW);
+
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.max_uri_handlers = 16; // we use more than the default 8 (on port 80)
 
@@ -844,6 +893,13 @@ void startCameraServer(int hPort, int sPort){
         .user_ctx  = NULL
     };
 
+    httpd_uri_t rc_control_uri = {
+        .uri       = "/rc_control",
+        .method    = HTTP_GET,
+        .handler   = rc_control_handler,
+        .user_ctx  = NULL
+    };
+
     // Request Handlers; config.max_uri_handlers (above) must be >= the number of handlers
     config.server_port = hPort;
     config.ctrl_port = hPort;
@@ -864,6 +920,7 @@ void startCameraServer(int hPort, int sPort){
         httpd_register_uri_handler(camera_httpd, &logo_svg_uri);
         httpd_register_uri_handler(camera_httpd, &dump_uri);
         httpd_register_uri_handler(camera_httpd, &stop_uri);
+        httpd_register_uri_handler(camera_httpd, &rc_control_uri);
     }
 
     config.server_port = sPort;
